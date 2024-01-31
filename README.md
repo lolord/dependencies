@@ -17,7 +17,7 @@ Python 3.11 or above.
 
 ## Installation
 
-pip install git+https://gitee.com/lolord/dependencies.git
+pip install git+https://github.com/lolord/dependencies.git
 
 ## Usage
 
