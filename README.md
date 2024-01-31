@@ -22,9 +22,8 @@ pip install git+https://github.com/lolord/dependencies.git
 ## Usage
 
 ``` python
-from typing import Dict, List
+from typing import Annotated, Dict, List
 
-import anyio
 from pydantic import BaseModel
 
 from dependencies import Depends, decorator
@@ -36,7 +35,7 @@ class User(BaseModel):
 
 
 @decorator
-def create_user(user: User = Depends()) -> User:
+def create_user(user:Annotated[ User, Depends()]) -> User:
     return user
 
 
@@ -47,16 +46,16 @@ async def get_users(users: List[Dict]) -> List[User]:
     return results
 
 
-async def length(users: List[User] = Depends(get_users, use_cache=True)):
+async def length(users: Annotated[List[User] , Depends(get_users, use_cache=True)]):
     return len(users) or 1
 
 
-async def sum_score(users: List[User] = Depends(get_users, use_cache=True)):
+async def sum_score(users: Annotated[List[User], Depends(get_users, use_cache=True)]):
     return sum(user.score for user in users)
 
 
 @decorator
-async def avg(sum=Depends(sum_score), length=Depends(length)):
+async def avg(sum:Annotated[int, Depends(sum_score)], length: Annotated[int, Depends(length)]):
     return sum / length
 
 
