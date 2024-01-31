@@ -9,7 +9,7 @@ class Functor:
 
 
 @pytest.mark.anyio
-async def test_functor():  # pragma: no cover
+async def test_functor():
     functor = Functor()
 
     assert await solve_dependent(functor, a="a") == ("a", "b", "c")

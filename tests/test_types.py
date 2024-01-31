@@ -5,17 +5,17 @@ import pytest
 from dependencies.dependencies import Dependent, Depends, solve_dependent
 
 
+def get_user(user: Annotated["User", Depends()]):
+    return user
+
+
+def get_optional_user(user: Annotated[Optional["User"], Depends()]):
+    return user
+
+
 class User:
     def __init__(self, name) -> None:
         self.name = name
-
-
-def get_user(user: "User" = Depends()):
-    return user
-
-
-def get_optional_user(user: Optional["User"] = Depends()):
-    return user
 
 
 @pytest.mark.anyio
@@ -31,13 +31,13 @@ async def test_forwardref():
 
 @pytest.mark.anyio
 async def test_annotated():
-    def get_bob_name(user: Annotated[User, Depends(get_user)]):
+    def get_bob_name(user: Annotated[User, Depends()]):
         return user.name
 
     name = await solve_dependent(get_bob_name, name="Bob")
     assert name == "Bob"
 
-    def get_alice_name(user: Annotated[User, get_user]):
+    def get_alice_name(user: Annotated[User, Depends(get_user)]):
         return user.name
 
     name = await solve_dependent(get_alice_name, name="Alice")

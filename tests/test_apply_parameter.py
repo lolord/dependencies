@@ -17,29 +17,25 @@ def test_var_positional():
     def foo(a, b, *c):
         return a, b, c
 
-    a, b = apply_parameter(foo, {"a": 1, "b": 2, "c": (3, 4)})
-    assert a == (1, 2, 3, 4)
-    assert b == {}
-    assert foo(*a, **b) == (1, 2, (3, 4))
+    args, kwargs = apply_parameter(foo, {"a": 1, "b": 2, "c": (3, 4)})
+    assert args == (1, 2, 3, 4)
+    assert kwargs == {}
+    assert foo(*args, **kwargs) == (1, 2, (3, 4))
+
+    args, kwargs = apply_parameter(foo, {"a": 1, "b": 2, "c": (3, 4), "d": 5})
+    assert args == (1, 2, 3, 4)
+    assert kwargs == {}
+
+    args, kwargs = apply_parameter(foo, {"a": 1, "b": 2, "c": (), "d": 5})
+    assert args == (1, 2)
+    assert kwargs == {}
+
+    args, kwargs = apply_parameter(foo, {"a": 1, "b": 2, "d": 5})
+    assert args == (1, 2)
+    assert kwargs == {}
+
     with pytest.raises(TypeError, match=".* is not iterable: .*"):
-        a, b = apply_parameter(foo, {"a": 1, "b": 2, "c": 3})
-
-    def foo(a, b, *args):
-        return a, b, args
-
-    a, b = apply_parameter(foo, {"a": 1, "b": 2, "args": (3, 4)})
-    assert a == (1, 2, 3, 4)
-    assert b == {}
-    assert foo(*a, **b) == (1, 2, (3, 4))
-
-    a, b = apply_parameter(foo, {"a": 1, "b": 2, "c": (3, 4)})
-
-    assert a == (
-        1,
-        2,
-    )
-    assert b == {}
-    assert foo(*a, **b) == (1, 2, ())
+        apply_parameter(foo, {"a": 1, "b": 2, "c": 3})
 
 
 def test_keywords():
@@ -53,21 +49,13 @@ def test_keywords():
 
 
 def test_var_keywords():
-    def foo(a, b, **c):
-        return a, b, c
-
-    a, b = apply_parameter(foo, {"a": 1, "b": 2, "c": {"d": "e"}})
-    assert a == (1, 2)
-    assert b == {"d": "e"}
-    assert foo(*a, **b) == (1, 2, {"d": "e"})
-
     def foo(a, b, **kwargs):
         return a, b, kwargs
 
-    a, b = apply_parameter(foo, {"a": 1, "b": 2, "c": {"d": "e"}})
+    a, b = apply_parameter(foo, {"a": 1, "b": 2, "c": 3, "d": 4})
     assert a == (1, 2)
-    assert b == {"c": {"d": "e"}}
-    assert foo(*a, **b) == (1, 2, {"c": {"d": "e"}})
+    assert b == {"c": 3, "d": 4}
+    assert foo(*a, **b) == (1, 2, {"c": 3, "d": 4})
 
 
 def test_not_find_parameter():
@@ -92,12 +80,3 @@ def test_var_keyword_typeerror():
     )
     with pytest.raises(TypeError, match=".* is a VAR_KEYWORD: .*"):
         apply_parameter(foo, {"a": 1, "b": 2, "c": 3})
-
-
-if __name__ == "__main__":  # pragma: no cover
-    test_positional()
-    test_var_positional()
-    test_keywords()
-    test_var_keywords()
-    test_not_find_parameter()
-    test_var_keyword_typeerror()

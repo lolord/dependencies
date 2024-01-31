@@ -198,7 +198,7 @@ def evaluate_forwardref(
     return cast(Any, type_)._evaluate(globalns, localns, set())
 
 
-def get_typed_annotation(annotation, globalns: Dict[str, Any]) -> Any:
+def get_typed_annotation(annotation: Any, globalns: Dict[str, Any]) -> Any:
     if get_origin(annotation) is Union:
         # annotation is typing.Optional[Any]
         annotation, *_others = get_args(annotation)
@@ -235,30 +235,30 @@ def get_dependent(
     signature_params = dependent.signature.parameters
     for _, param in signature_params.items():
         depends: Optional[Depends] = None
+        annotation = param.annotation
         if get_origin(param.annotation) is Annotated:
-            *_, sub_call = get_args(param.annotation)
-            if isinstance(sub_call, Depends):
-                # Annotated[User, Depends(get_user)]
-                depends = sub_call
-            else:
-                # Annotated[User, get_user] | Annotated[User, get_user] = Depends()
-                sub_dependent = get_dependent(
-                    call=sub_call, name=param.name, use_cache=use_cache
-                )
-                dependent.dependencies.append(sub_dependent)
-                continue
+            annotation, *items = get_args(param.annotation)
+            annotation = get_typed_annotation(
+                annotation, globalns=getattr(call, "__globals__", {})
+            )
+            for depends in items:
+                if isinstance(depends, Depends):
+                    # Annotated[User, Depends(get_user)]
+                    # Annotated[User, Depends()]
+                    if depends.dependency is None:
+                        depends.dependency = annotation
+                    continue
         if depends and isinstance(param.default, Depends):  # pragma: no cover
             raise ValueError(
                 f"{param.name} have two depends:{ depends}, {param.default}"
             )
 
         depends = depends or param.default
-
         if isinstance(depends, Depends):
             sub_dependent = get_sub_dependent(
                 name=param.name,
                 annotation=get_typed_annotation(
-                    param.annotation, globalns=getattr(call, "__globals__", {})
+                    annotation, globalns=getattr(call, "__globals__", {})
                 ),
                 depends=depends,
             )
@@ -424,7 +424,7 @@ async def run_dependent(
 ) -> R:
     assert dependent.name is None
     dependent.name = "result"
-    wrap = Dependent(dict, dependencies=[dependent])
+    wrap: Dependent = Dependent(dict, dependencies=[dependent])
     if stack is None:
         async with AsyncExitStack() as stack:
             solved = await solve_dependencies(
@@ -445,16 +445,16 @@ async def solve_dependent(
     var_namespace: Optional[Callable[..., Dict[str, Any]]] = None,
     **namespace: Any,
 ) -> R:
-    main_dependent = get_dependent(call=call)
+    dependent = get_dependent(call=call)
     if var_namespace is not None:
-        main_dependent.var_namespace = var_namespace
+        dependent.var_namespace = var_namespace
     dependencies = dependencies if dependencies is not None else []
-    main_dependent.dependencies = dependencies + (main_dependent.dependencies or [])
+    dependent.dependencies = dependencies + (dependent.dependencies or [])
 
-    return await run_dependent(dependent=main_dependent, stack=stack, **namespace)
+    return await run_dependent(dependent=dependent, stack=stack, **namespace)
 
 
-def builder(
+def decorator(
     func: Callable[P, R],
     *,
     dependencies: Optional[List[Dependent]] = None,
@@ -468,15 +468,12 @@ def builder(
     return wrapper
 
 
-def decorator(
+def builder(
     func: Optional[Callable[P, R]] = None,
     *,
     dependencies: Optional[List[Dependent]] = None,
     stack: Optional[AsyncExitStack] = None,
 ):
     if func is None:
-        return functools.partial(builder, dependencies=dependencies, stack=stack)
-    return builder(func, dependencies=dependencies, stack=stack)
-
-
-# decorator
+        return functools.partial(decorator, dependencies=dependencies, stack=stack)
+    return decorator(func, dependencies=dependencies, stack=stack)

@@ -22,7 +22,7 @@ def get_kwargs():
 @pytest.mark.anyio
 async def test_dependent():
     dependent = get_dependent(call=Point)
-    user = await solve_dependent(dependent, **data)
+    user = await solve_dependent(dependent, **data)  # type: ignore
     assert user.data() == data
 
 

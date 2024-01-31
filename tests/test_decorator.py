@@ -1,3 +1,5 @@
+from typing import Annotated
+
 import pytest
 
 from dependencies import Depends, decorator
@@ -12,7 +14,9 @@ async def height(h):
 
 
 @decorator
-async def area(width=Depends(width), height=Depends(height)):
+async def area(
+    width: Annotated[int, Depends(width)], height: Annotated[int, Depends(height)]
+):
     return width * height
 
 
